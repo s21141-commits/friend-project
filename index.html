@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>랜덤 친구 번호 뽑기</title>
+<style>
+:root{--bg:#fff4dc;--card:#ffffff;--ink:#2d2a3e;--sub:#6b6785;--accent:#ff6b6b;--accent2:#4d96ff;--ok:#2fb67c;--line:#eadfc8;--chip:#fff0f0;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#1d1b2b;--card:#2a2740;--ink:#f4f1ff;--sub:#b3aed1;--line:#3c3860;--chip:#3a2d45}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#1d1b2b;--card:#2a2740;--ink:#f4f1ff;--sub:#b3aed1;--line:#3c3860;--chip:#3a2d45}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Jua","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;min-height:100vh;display:flex;justify-content:center;padding:16px}
+.wrap{width:100%;max-width:520px}
+h1{text-align:center;font-size:26px;margin:8px 0 4px}
+.sub{text-align:center;color:var(--sub);margin:0 0 16px;font-size:15px}
+.card{background:var(--card);border:2px solid var(--line);border-radius:22px;padding:22px;margin-bottom:14px;box-shadow:0 6px 0 var(--line)}
+.hidden{display:none!important}
+label{display:block;font-size:17px;margin-bottom:8px}
+input[type=number],input[type=password],input[type=text],textarea{width:100%;font-size:26px;text-align:center;padding:12px;border-radius:14px;border:2px solid var(--line);background:var(--bg);color:var(--ink);font-family:inherit}
+textarea{font-size:13px;text-align:left;height:90px}
+input.small{font-size:18px}
+button{font-family:inherit;font-size:20px;border:0;border-radius:16px;padding:14px 18px;cursor:pointer;color:#fff;background:var(--accent2);width:100%;margin-top:12px;box-shadow:0 4px 0 rgba(0,0,0,.18)}
+button:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.18)}
+button.red{background:var(--accent)}
+button.green{background:var(--ok)}
+button.ghost{background:transparent;color:var(--sub);box-shadow:none;border:2px solid var(--line);font-size:16px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:8px}.row button{margin-top:12px}
+.hi{text-align:center;font-size:22px;margin:0 0 8px}
+.slot{font-size:96px;line-height:1.1;text-align:center;font-weight:700;color:var(--accent);margin:14px 0;min-height:110px}
+.msg{text-align:center;font-size:17px;color:var(--sub);margin:6px 0}
+.msg.big{color:var(--ink);font-size:20px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{background:var(--chip);border-radius:999px;padding:6px 14px;font-size:16px}
+.chip small{color:var(--sub)}
+.err{color:var(--accent);text-align:center;min-height:22px;margin:8px 0 0}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left}
+.scroll{overflow-x:auto;max-height:300px;overflow-y:auto}
+.top{display:flex;justify-content:flex-end}
+.top button{width:auto;margin:0;padding:6px 12px;font-size:14px}
+h2{font-size:18px;margin:0 0 10px}
+.mission{background:var(--chip);border:2px dashed var(--accent);border-radius:16px;padding:14px;text-align:center;font-size:19px;margin-top:10px;line-height:1.5}
+.mission b{display:block;color:var(--accent);margin-bottom:4px;font-size:16px}
+.overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(160deg,#ff6b6b,#ffa94d);color:#fff;text-align:center;overflow-y:auto}
+.overlay.hidden{display:none!important}
+details.pn{border:2px solid var(--line);border-radius:14px;padding:8px 12px;margin-bottom:8px;background:var(--bg)}
+details.pn summary{cursor:pointer;font-size:17px;font-weight:700}
+details.pn table{margin-top:8px}
+.ov-in{width:100%;max-width:520px}
+.ov-title{font-size:30px;margin:0 0 6px}
+.ov-who{font-size:22px;margin:0 0 22px;opacity:.95}
+.ov-text{font-size:34px;line-height:1.45;font-weight:700;background:rgba(255,255,255,.2);border:3px dashed #fff;border-radius:24px;padding:28px 20px;margin:0 0 26px;word-break:keep-all}
+.overlay button{background:#fff;color:#e8590c;font-size:24px;padding:16px;box-shadow:0 5px 0 rgba(0,0,0,.2)}
+.overlay .pop{animation:pop .5s ease}
+.pop{animation:pop .5s ease}
+@keyframes pop{0%{transform:scale(.3);opacity:0}70%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎲 랜덤 친구 뽑기</h1>
+  <p class="sub">하루에 한 번, 새로운 친구를 만나요!</p>
+
+  <!-- 1. 번호 입력 -->
+  <div id="vLogin" class="card">
+    <label for="myNum">내 번호를 입력하세요</label>
+    <input id="myNum" type="number" inputmode="numeric" min="1" placeholder="예: 7">
+    <div id="skipNote" class="msg"></div>
+    <div id="loginErr" class="err"></div>
+    <button id="btnEnter">들어가기</button>
+    <button id="btnTeacher" class="ghost">👩‍🏫 선생님 메뉴</button>
+  </div>
+
+  <!-- 2. 뽑기 화면 -->
+  <div id="vMe" class="hidden">
+    <div class="card">
+      <p class="hi" id="hi"></p>
+      <div class="slot" id="slot">?</div>
+      <p class="msg big" id="status"></p>
+      <div id="mission" class="mission hidden"></div>
+      <button id="btnDraw" class="red">🎁 친구 뽑기!</button>
+      <button id="btnBack" class="ghost">처음으로</button>
+    </div>
+    <div class="card">
+      <h2>📒 내가 뽑은 친구들</h2>
+      <div id="history" class="chips"></div>
+    </div>
+  </div>
+
+  <!-- 3. 선생님 메뉴 -->
+  <div id="vTeacher" class="hidden">
+    <div id="tLock" class="card">
+      <label for="pin">선생님 비밀번호 (처음엔 0000)</label>
+      <input id="pin" type="password" inputmode="numeric" placeholder="••••">
+      <div id="pinErr" class="err"></div>
+      <button id="btnPin" class="green">열기</button>
+      <button class="ghost" data-home>돌아가기</button>
+    </div>
+    <div id="tOpen" class="hidden">
+      <div class="card">
+        <h2>⚙️ 설정</h2>
+        <label for="total">우리 반 학생 수 (번호는 1번부터)</label>
+        <input id="total" type="number" class="small" min="2" max="60">
+        <label for="skipIn" style="margin-top:12px">없는 번호 (쉼표로 구분, 예: 4, 13)</label>
+        <input id="skipIn" type="text" class="small" placeholder="없으면 비워두세요">
+        <label for="newPin" style="margin-top:12px">비밀번호 바꾸기 (비워두면 그대로)</label>
+        <input id="newPin" type="text" class="small" placeholder="새 비밀번호">
+        <button id="btnSaveCfg" class="green">저장</button>
+        <div id="cfgMsg" class="msg"></div>
+      </div>
+      <div class="card">
+        <h2>📋 오늘의 기록 <span id="todayCount" style="font-size:14px;color:var(--sub)"></span></h2>
+        <div id="notYet" class="msg" style="text-align:left"></div>
+        <div class="scroll"><table class="tbl" id="tbl"></table></div>
+      </div>
+      <div class="card">
+        <h2>🔎 번호별 상세</h2>
+        <div class="row"><button id="btnOpenAll" class="ghost">모두 펼치기</button><button id="btnCloseAll" class="ghost">모두 접기</button></div>
+        <div id="perNum" style="margin-top:12px"></div>
+      </div>
+      <div class="card">
+        <h2>🎯 미션 목록</h2>
+        <label for="missionIn" style="font-size:15px">한 줄에 미션 하나씩 적으세요. 친구를 뽑으면 이 중 하나가 랜덤으로 뜨고, 비워두면 미션이 나오지 않아요.</label>
+        <textarea id="missionIn" spellcheck="false" style="height:150px;font-size:15px" placeholder="예) 좋아하는 음식 물어보기
+예) 오늘 점심 같이 먹기"></textarea>
+        <button id="btnSaveMission" class="green">미션 저장</button>
+        <div id="missionMsg" class="msg"></div>
+      </div>
+      <div class="card">
+        <h2>🛠 도구</h2>
+        <label for="undoNum">오늘 뽑기 취소 (실수했을 때, 번호)</label>
+        <div class="row"><input id="undoNum" type="number" class="small" min="1"><button id="btnUndo" style="width:auto;white-space:nowrap">취소</button></div>
+        <div id="undoMsg" class="msg"></div>
+        <label style="margin-top:14px">백업 / 복원</label>
+        <textarea id="backup" spellcheck="false"></textarea>
+        <div class="row"><button id="btnExport" class="ghost">백업 만들기</button><button id="btnImport" class="ghost">복원하기</button></div>
+        <div id="bkMsg" class="msg"></div>
+        <button id="btnReset" class="red">🗑 모든 기록 지우기</button>
+        <div id="resetMsg" class="msg"></div>
+      </div>
+      <button class="ghost" data-home>닫기</button>
+    </div>
+  </div>
+</div>
+
+<div id="missionOverlay" class="overlay hidden">
+  <div class="ov-in">
+    <p class="ov-title">🎯 오늘의 미션!</p>
+    <p class="ov-who" id="ovWho"></p>
+    <div class="ov-text pop" id="ovText"></div>
+    <button id="btnMissionOk">확인했어요!</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var KEY = 'randomFriendDraw.v1';
+  var S = load();
+  var me = null, busy = false, saveWarned = false;
+
+  function $(id){ return document.getElementById(id); }
+  function cleanSkip(a){
+    var r = [];
+    (Array.isArray(a) ? a : []).forEach(function(v){ v = parseInt(v, 10); if(v > 0 && r.indexOf(v) < 0) r.push(v); });
+    return r.sort(function(a, b){ return a - b; });
+  }
+  function cleanMissions(a){
+    return (Array.isArray(a) ? a : []).map(function(m){ return String(m).trim(); }).filter(Boolean);
+  }
+  function pickMission(){
+    if(!S.missions.length) return '';
+    var used = (S.picks[me] || []).map(function(p){ return p.mission; });
+    var pool = S.missions.filter(function(m){ return used.indexOf(m) < 0; });
+    if(!pool.length) pool = S.missions;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  function isActive(i){ return i >= 1 && i <= S.total && S.skip.indexOf(i) < 0; }
+  function activeList(){ var l = []; for(var i = 1; i <= S.total; i++) if(isActive(i)) l.push(i); return l; }
+  function randActive(){ var l = activeList(); return l.length ? l[Math.floor(Math.random() * l.length)] : '?'; }
+  function renderSkipNote(){
+    var s = S.skip.filter(function(v){ return v <= S.total; });
+    $('skipNote').textContent = s.length ? '※ 없는 번호: ' + s.join(', ') + '번' : '';
+  }
+  function load(){
+    try{
+      var raw = localStorage.getItem(KEY);
+      if(raw){
+        var o = JSON.parse(raw);
+        if(o && typeof o === 'object') return { total: +o.total || 25, pin: String(o.pin || '0000'), picks: o.picks || {}, skip: cleanSkip(o.skip), missions: cleanMissions(o.missions) };
+      }
+    }catch(e){}
+    return { total: 25, pin: '0000', picks: {}, skip: [], missions: [] };
+  }
+  function save(){
+    try{ localStorage.setItem(KEY, JSON.stringify(S)); return true; }
+    catch(e){ return false; }
+  }
+  function today(){
+    var d = new Date(), p = function(n){ return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+  function mmdd(s){ return s.slice(5).replace('-', '/'); }
+  function show(name){
+    ['vLogin','vMe','vTeacher'].forEach(function(v){ $(v).classList.add('hidden'); });
+    $(name).classList.remove('hidden');
+  }
+  function home(){
+    me = null; $('myNum').value = ''; $('loginErr').textContent = ''; renderSkipNote();
+    $('tLock').classList.remove('hidden'); $('tOpen').classList.add('hidden'); $('pin').value = '';
+    show('vLogin');
+  }
+
+  // ---- 규칙: 나 자신 X, 내가 이미 뽑은 친구 X, 나를 뽑은 친구 X ----
+  function pickedToday(){
+    var t = today(), out = [];
+    for(var k in S.picks){ (S.picks[k] || []).forEach(function(p){ if(p.date === t) out.push(p.to); }); }
+    return out;
+  }
+  function pickedBy(x){
+    var out = [];
+    for(var k in S.picks){
+      if((S.picks[k] || []).some(function(p){ return p.to === x; })) out.push(+k);
+    }
+    return out;
+  }
+  function candidates(x){
+    var mine = (S.picks[x] || []).map(function(p){ return p.to; });
+    var theirs = pickedBy(x);
+    var taken = pickedToday();
+    var list = [];
+    for(var i = 1; i <= S.total; i++){
+      if(isActive(i) && i !== x && mine.indexOf(i) < 0 && theirs.indexOf(i) < 0 && taken.indexOf(i) < 0) list.push(i);
+    }
+    return list;
+  }
+  function drewToday(x){
+    return (S.picks[x] || []).filter(function(p){ return p.date === today(); })[0] || null;
+  }
+
+  // ---- 입장 ----
+  function enter(){
+    var n = parseInt($('myNum').value, 10);
+    if(!n || n < 1 || n > S.total){ $('loginErr').textContent = '1번부터 ' + S.total + '번 사이의 번호를 써 주세요!'; return; }
+    if(!isActive(n)){ $('loginErr').textContent = n + '번은 없는 번호예요. 다시 확인해 주세요!'; return; }
+    me = n; renderMe(); show('vMe');
+  }
+  function renderMe(){
+    $('hi').textContent = '안녕, ' + me + '번! 👋';
+    var t = drewToday(me), left = candidates(me).length;
+    var btn = $('btnDraw');
+    $('slot').textContent = t ? t.to : '?';
+    var mb = $('mission');
+    if(t && t.mission){
+      mb.innerHTML = '<b>🎯 오늘의 미션</b>';
+      var sp = document.createElement('span'); sp.textContent = t.mission; mb.appendChild(sp);
+      mb.classList.remove('hidden');
+    }else mb.classList.add('hidden');
+    if(t){
+      $('status').textContent = '오늘은 ' + t.to + '번 친구를 뽑았어요! 내일 또 만나요 😊';
+      btn.disabled = true; btn.textContent = '오늘은 끝!';
+    }else if(left === 0){
+      $('status').textContent = '지금은 뽑을 수 있는 친구가 없어요. (오늘 이미 뽑힌 친구는 뽑을 수 없어요) 내일 다시 도전하거나 선생님께 알려주세요!';
+      btn.disabled = true; btn.textContent = '뽑을 친구 없음';
+    }else{
+      $('status').textContent = '버튼을 눌러 오늘의 친구를 뽑아요!';
+      btn.disabled = false; btn.textContent = '🎁 친구 뽑기!';
+    }
+    var h = $('history'); h.innerHTML = '';
+    var list = S.picks[me] || [];
+    if(!list.length){ h.innerHTML = '<span class="msg">아직 뽑은 친구가 없어요.</span>'; }
+    list.forEach(function(p){
+      var c = document.createElement('span'); c.className = 'chip';
+      c.innerHTML = p.to + '번 <small>' + mmdd(p.date) + '</small>';
+      h.appendChild(c);
+    });
+  }
+
+  // ---- 뽑기 ----
+  function draw(){
+    if(busy || drewToday(me)) return;
+    var c = candidates(me);
+    if(!c.length) return;
+    var pick = c[Math.floor(Math.random() * c.length)];
+    busy = true;
+    // 애니메이션 도중 닫아도 다시 뽑지 못하게 바로 기록
+    (S.picks[me] = S.picks[me] || []).push({ to: pick, date: today(), mission: pickMission() });
+    if(!save() && !saveWarned){ saveWarned = true; $('status').textContent = '⚠️ 저장이 안 되는 브라우저예요. 선생님께 알려주세요!'; }
+    $('btnDraw').disabled = true;
+    $('status').textContent = '두근두근…';
+    var slot = $('slot'), count = 0;
+    var timer = setInterval(function(){
+      slot.textContent = randActive();
+      if(++count > 22){
+        clearInterval(timer);
+        slot.textContent = pick;
+        slot.classList.remove('pop'); void slot.offsetWidth; slot.classList.add('pop');
+        busy = false;
+        renderMe();
+        $('status').textContent = '🎉 ' + pick + '번 친구가 뽑혔어요! 오늘 꼭 말을 걸어 보세요!';
+        var rm = drewToday(me);
+        if(rm && rm.mission) setTimeout(function(){ showMission(pick, rm.mission); }, 900);
+      }
+    }, 80);
+  }
+
+  // ---- 선생님 ----
+  function openTeacher(){
+    $('total').value = S.total; $('skipIn').value = S.skip.filter(function(v){ return v <= S.total; }).join(', '); $('newPin').value = '';
+    $('missionIn').value = S.missions.join('\n'); $('missionMsg').textContent = '';
+    $('cfgMsg').textContent = $('undoMsg').textContent = $('bkMsg').textContent = $('resetMsg').textContent = '';
+    renderTable();
+    $('tLock').classList.add('hidden'); $('tOpen').classList.remove('hidden');
+  }
+  function renderTable(){
+    var t = today(), done = 0, esc = function(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }, html = '<tr><th>번호</th><th>오늘 뽑은 · 뽑힌 기록 · 미션</th></tr>', pending = [];
+    for(var i = 1; i <= S.total; i++){
+      if(!isActive(i)){ html += '<tr><td>' + i + '</td><td style="color:var(--sub)">🚫 없는 번호</td></tr>'; continue; }
+      var list = S.picks[i] || [];
+      var tl = list.filter(function(p){ return p.date === t; });
+      if(tl.length) done++; else pending.push(i);
+      var cell = tl.map(function(p){
+        return '<div style="margin-bottom:6px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline"><span>👉 <b>' + p.to + '번</b>을 뽑음 <span style="color:var(--sub)">(' + mmdd(p.date) + ')</span></span>' + (p.mission ? '<span>🎯 ' + esc(p.mission) + '</span>' : '') + '</div>';
+      }).join('');
+      for(var k in S.picks){
+        (S.picks[k] || []).forEach(function(p){
+          if(p.to === i && p.date === t) cell += '<div style="margin-bottom:6px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline"><span>👈 <b>' + k + '번</b>에게 뽑힘 <span style="color:var(--sub)">(' + mmdd(p.date) + ')</span></span>' + (p.mission ? '<span>🎯 ' + esc(p.mission) + '</span>' : '') + '</div>';
+        });
+      }
+      if(!cell) cell = '-';
+      html += '<tr><td>' + i + '</td><td>' + cell + '</td></tr>';
+      
+    }
+    
+    
+    [].forEach(function(r){
+      html += '<tr><td>' + mmdd(r.d) + '</td><td>' + r.from + '번</td><td>' + r.to + '번</td><td>' + (r.m ? esc(r.m) : '<span style="color:var(--sub)">-</span>') + '</td></tr>';
+    });
+    
+    var sk = S.skip.filter(function(v){ return v <= S.total; });
+    $('notYet').textContent = (pending.length ? '오늘 아직 못 뽑은 번호: ' + pending.join(', ') : '오늘 모두 뽑았어요! 🎉') + (sk.length ? '  |  없는 번호: ' + sk.join(', ') : '');
+    $('tbl').innerHTML = html;
+    renderPerNum();
+    $('todayCount').textContent = '· 오늘 뽑은 친구 ' + done + '/' + activeList().length;
+  }
+  function renderPerNum(){
+    var box = $('perNum'), openSet = {}, html = '';
+    Array.prototype.forEach.call(box.querySelectorAll('details'), function(d){ if(d.open) openSet[d.getAttribute('data-n')] = true; });
+    var esc = function(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+    for(var i = 1; i <= S.total; i++){
+      if(!isActive(i)){ html += '<div class="msg" style="text-align:left">' + i + '번 🚫 없는 번호</div>'; continue; }
+      var recs = (S.picks[i] || []).map(function(p){ return { kind: 0, other: p.to, d: p.date, m: p.mission || '' }; });
+      var a = recs.length, b = 0;
+      for(var k in S.picks){
+        (S.picks[k] || []).forEach(function(p){ if(p.to === i){ recs.push({ kind: 1, other: +k, d: p.date, m: p.mission || '' }); b++; } });
+      }
+      recs.sort(function(x, y){ return x.d < y.d ? -1 : x.d > y.d ? 1 : x.kind - y.kind; });
+      var body = recs.length ? '<table class="tbl"><tr><th>날짜</th><th>구분</th><th>상대</th><th>미션</th></tr>' + recs.map(function(r){
+        return '<tr><td>' + mmdd(r.d) + '</td><td>' + (r.kind ? '👈 뽑힘' : '👉 뽑음') + '</td><td><b>' + r.other + '번</b></td><td>' + (r.m ? '🎯 ' + esc(r.m) : '-') + '</td></tr>';
+      }).join('') + '</table>' : '<div class="msg" style="text-align:left">아직 기록이 없어요.</div>';
+      html += '<details class="pn" data-n="' + i + '"' + (openSet[i] ? ' open' : '') + '><summary>' + i + '번 <span style="font-weight:400;color:var(--sub);font-size:14px">· 뽑음 ' + a + ' · 뽑힘 ' + b + '</span></summary>' + body + '</details>';
+    }
+    box.innerHTML = html;
+  }
+  function resetArm(){ $('btnReset').dataset.arm = ''; $('btnReset').textContent = '🗑 모든 기록 지우기'; }
+
+  renderSkipNote();
+  function showMission(friend, text){
+    $('ovWho').textContent = friend + '번 친구와 함께!';
+    $('ovText').textContent = text;
+    var o = $('missionOverlay'); o.classList.remove('hidden'); o.scrollTop = 0;
+    var t = $('ovText'); t.classList.remove('pop'); void t.offsetWidth; t.classList.add('pop');
+  }
+  $('btnMissionOk').onclick = function(){ $('missionOverlay').classList.add('hidden'); };
+  // ---- 이벤트 ----
+  $('btnEnter').onclick = enter;
+  $('myNum').onkeydown = function(e){ if(e.key === 'Enter') enter(); };
+  $('btnDraw').onclick = draw;
+  $('btnBack').onclick = function(){ if(!busy) home(); };
+  $('btnTeacher').onclick = function(){ show('vTeacher'); };
+  Array.prototype.forEach.call(document.querySelectorAll('[data-home]'), function(b){ b.onclick = home; });
+  $('btnPin').onclick = function(){
+    if($('pin').value === S.pin){ $('pinErr').textContent = ''; openTeacher(); }
+    else $('pinErr').textContent = '비밀번호가 달라요.';
+  };
+  $('pin').onkeydown = function(e){ if(e.key === 'Enter') $('btnPin').click(); };
+  $('btnSaveCfg').onclick = function(){
+    var n = parseInt($('total').value, 10);
+    if(!n || n < 2 || n > 60){ $('cfgMsg').textContent = '학생 수는 2~60명 사이로 해 주세요.'; return; }
+    S.total = n;
+    S.skip = cleanSkip($('skipIn').value.split(/[^0-9]+/).filter(Boolean)).filter(function(v){ return v <= n; });
+    renderSkipNote();
+    var np = $('newPin').value.trim();
+    if(np) S.pin = np;
+    $('cfgMsg').textContent = save() ? '저장했어요 ✅' : '저장 실패 😢';
+    $('newPin').value = ''; renderTable();
+  };
+  $('btnOpenAll').onclick = function(){ Array.prototype.forEach.call($('perNum').querySelectorAll('details'), function(d){ d.open = true; }); };
+  $('btnCloseAll').onclick = function(){ Array.prototype.forEach.call($('perNum').querySelectorAll('details'), function(d){ d.open = false; }); };
+  $('btnSaveMission').onclick = function(){
+    S.missions = cleanMissions($('missionIn').value.split('\n'));
+    $('missionMsg').textContent = save() ? '미션 ' + S.missions.length + '개 저장했어요 ✅' : '저장 실패 😢';
+  };
+  $('btnUndo').onclick = function(){
+    var n = parseInt($('undoNum').value, 10), list = S.picks[n] || [], t = today();
+    var idx = -1;
+    list.forEach(function(p, i){ if(p.date === t) idx = i; });
+    if(idx < 0){ $('undoMsg').textContent = n + '번은 오늘 뽑은 기록이 없어요.'; return; }
+    var removed = list.splice(idx, 1)[0];
+    save(); renderTable();
+    $('undoMsg').textContent = n + '번의 오늘 기록(' + removed.to + '번)을 취소했어요.';
+  };
+  $('btnExport').onclick = function(){
+    $('backup').value = JSON.stringify(S);
+    $('backup').select();
+    $('bkMsg').textContent = '이 글을 복사해서 메모장 등에 보관하세요.';
+  };
+  $('btnImport').onclick = function(){
+    try{
+      var o = JSON.parse($('backup').value);
+      if(!o || typeof o.picks !== 'object') throw 0;
+      S = { total: +o.total || S.total, pin: String(o.pin || S.pin), picks: o.picks, skip: cleanSkip(o.skip), missions: cleanMissions(o.missions) };
+      save(); openTeacher(); $('bkMsg').textContent = '복원했어요 ✅';
+    }catch(e){ $('bkMsg').textContent = '백업 내용이 올바르지 않아요.'; }
+  };
+  $('btnReset').onclick = function(){
+    var b = $('btnReset');
+    if(b.dataset.arm !== '1'){
+      b.dataset.arm = '1'; b.textContent = '정말 지울까요? 한 번 더 누르면 삭제!';
+      setTimeout(resetArm, 4000); return;
+    }
+    S.picks = {}; save(); resetArm(); renderTable();
+    $('resetMsg').textContent = '모든 기록을 지웠어요.';
+  };
+})();
+</script>
+</body>
+</html>
