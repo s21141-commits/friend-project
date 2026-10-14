@@ -81,6 +81,7 @@ details.pn table{margin-top:8px}
       <div class="slot" id="slot">?</div>
       <p class="msg big" id="status"></p>
       <div id="mission" class="mission hidden"></div>
+      <p class="msg" id="weekNote"></p>
       <button id="btnDraw" class="red">🎁 친구 뽑기!</button>
       <button id="btnBack" class="ghost">처음으로</button>
     </div>
@@ -106,6 +107,8 @@ details.pn table{margin-top:8px}
         <input id="total" type="number" class="small" min="2" max="60">
         <label for="skipIn" style="margin-top:12px">없는 번호 (쉼표로 구분, 예: 4, 13)</label>
         <input id="skipIn" type="text" class="small" placeholder="없으면 비워두세요">
+        <label for="weekIn" style="margin-top:12px">일주일(월~일)에 참여할 수 있는 횟수 (0이면 제한 없음, 하루는 항상 1번)</label>
+        <input id="weekIn" type="number" class="small" min="0" max="7">
         <label for="newPin" style="margin-top:12px">비밀번호 바꾸기 (비워두면 그대로)</label>
         <input id="newPin" type="text" class="small" placeholder="새 비밀번호">
         <button id="btnSaveCfg" class="green">저장</button>
@@ -189,10 +192,10 @@ details.pn table{margin-top:8px}
       var raw = localStorage.getItem(KEY);
       if(raw){
         var o = JSON.parse(raw);
-        if(o && typeof o === 'object') return { total: +o.total || 25, pin: String(o.pin || '0000'), picks: o.picks || {}, skip: cleanSkip(o.skip), missions: cleanMissions(o.missions) };
+        if(o && typeof o === 'object') return { total: +o.total || 25, pin: String(o.pin || '0000'), picks: o.picks || {}, skip: cleanSkip(o.skip), missions: cleanMissions(o.missions), weekLimit: (o.weekLimit === undefined ? 3 : Math.max(0, parseInt(o.weekLimit, 10) || 0)) };
       }
     }catch(e){}
-    return { total: 25, pin: '0000', picks: {}, skip: [], missions: [] };
+    return { total: 25, pin: '0000', picks: {}, skip: [], missions: [], weekLimit: 3 };
   }
   function save(){
     try{ localStorage.setItem(KEY, JSON.stringify(S)); return true; }
@@ -214,6 +217,13 @@ details.pn table{margin-top:8px}
   }
 
   // ---- 규칙: 나 자신 X, 내가 이미 뽑은 친구 X, 나를 뽑은 친구 X ----
+  function weekStart(){
+    var d = new Date(), p = function(n){ return (n < 10 ? '0' : '') + n; };
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+  function weekCount(x){ var ws = weekStart(); return (S.picks[x] || []).filter(function(p){ return p.date >= ws; }).length; }
+  function weekFull(x){ return S.weekLimit > 0 && weekCount(x) >= S.weekLimit; }
   function pickedToday(){
     var t = today(), out = [];
     for(var k in S.picks){ (S.picks[k] || []).forEach(function(p){ if(p.date === t) out.push(p.to); }); }
@@ -252,6 +262,7 @@ details.pn table{margin-top:8px}
     var t = drewToday(me), left = candidates(me).length;
     var btn = $('btnDraw');
     $('slot').textContent = t ? t.to : '?';
+    $('weekNote').textContent = S.weekLimit > 0 ? '이번 주 참여 ' + weekCount(me) + '/' + S.weekLimit + '회' : '';
     var mb = $('mission');
     if(t && t.mission){
       mb.innerHTML = '<b>🎯 오늘의 미션</b>';
@@ -261,6 +272,9 @@ details.pn table{margin-top:8px}
     if(t){
       $('status').textContent = '오늘은 ' + t.to + '번 친구를 뽑았어요! 내일 또 만나요 😊';
       btn.disabled = true; btn.textContent = '오늘은 끝!';
+    }else if(weekFull(me)){
+      $('status').textContent = '이번 주 참여는 모두 끝났어요! 다음 주 월요일에 만나요 😊';
+      btn.disabled = true; btn.textContent = '이번 주는 끝!';
     }else if(left === 0){
       $('status').textContent = '지금은 뽑을 수 있는 친구가 없어요. (오늘 이미 뽑힌 친구는 뽑을 수 없어요) 내일 다시 도전하거나 선생님께 알려주세요!';
       btn.disabled = true; btn.textContent = '뽑을 친구 없음';
@@ -280,7 +294,7 @@ details.pn table{margin-top:8px}
 
   // ---- 뽑기 ----
   function draw(){
-    if(busy || drewToday(me)) return;
+    if(busy || drewToday(me) || weekFull(me)) return;
     var c = candidates(me);
     if(!c.length) return;
     var pick = c[Math.floor(Math.random() * c.length)];
@@ -309,7 +323,7 @@ details.pn table{margin-top:8px}
   // ---- 선생님 ----
   function openTeacher(){
     $('total').value = S.total; $('skipIn').value = S.skip.filter(function(v){ return v <= S.total; }).join(', '); $('newPin').value = '';
-    $('missionIn').value = S.missions.join('\n'); $('missionMsg').textContent = '';
+    $('missionIn').value = S.missions.join('\n'); $('weekIn').value = S.weekLimit; $('missionMsg').textContent = '';
     $('cfgMsg').textContent = $('undoMsg').textContent = $('bkMsg').textContent = $('resetMsg').textContent = '';
     renderTable();
     $('tLock').classList.add('hidden'); $('tOpen').classList.remove('hidden');
@@ -320,7 +334,7 @@ details.pn table{margin-top:8px}
       if(!isActive(i)){ html += '<tr><td>' + i + '</td><td style="color:var(--sub)">🚫 없는 번호</td></tr>'; continue; }
       var list = S.picks[i] || [];
       var tl = list.filter(function(p){ return p.date === t; });
-      if(tl.length) done++; else pending.push(i);
+      if(tl.length) done++; else if(!weekFull(i)) pending.push(i);
       var cell = tl.map(function(p){
         return '<div style="margin-bottom:6px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline"><span>👉 <b>' + p.to + '번</b>을 뽑음 <span style="color:var(--sub)">(' + mmdd(p.date) + ')</span></span>' + (p.mission ? '<span>🎯 ' + esc(p.mission) + '</span>' : '') + '</div>';
       }).join('');
@@ -360,7 +374,7 @@ details.pn table{margin-top:8px}
       var body = recs.length ? '<table class="tbl"><tr><th>날짜</th><th>구분</th><th>상대</th><th>미션</th></tr>' + recs.map(function(r){
         return '<tr><td>' + mmdd(r.d) + '</td><td>' + (r.kind ? '👈 뽑힘' : '👉 뽑음') + '</td><td><b>' + r.other + '번</b></td><td>' + (r.m ? '🎯 ' + esc(r.m) : '-') + '</td></tr>';
       }).join('') + '</table>' : '<div class="msg" style="text-align:left">아직 기록이 없어요.</div>';
-      html += '<details class="pn" data-n="' + i + '"' + (openSet[i] ? ' open' : '') + '><summary>' + i + '번 <span style="font-weight:400;color:var(--sub);font-size:14px">· 뽑음 ' + a + ' · 뽑힘 ' + b + '</span></summary>' + body + '</details>';
+      html += '<details class="pn" data-n="' + i + '"' + (openSet[i] ? ' open' : '') + '><summary>' + i + '번 <span style="font-weight:400;color:var(--sub);font-size:14px">· 뽑음 ' + a + ' · 뽑힘 ' + b + ' · 이번 주 ' + weekCount(i) + (S.weekLimit ? '/' + S.weekLimit : '') + '회</span></summary>' + body + '</details>';
     }
     box.innerHTML = html;
   }
@@ -390,6 +404,7 @@ details.pn table{margin-top:8px}
     var n = parseInt($('total').value, 10);
     if(!n || n < 2 || n > 60){ $('cfgMsg').textContent = '학생 수는 2~60명 사이로 해 주세요.'; return; }
     S.total = n;
+    var wl = parseInt($('weekIn').value, 10); S.weekLimit = (wl > 0 ? Math.min(wl, 7) : 0);
     S.skip = cleanSkip($('skipIn').value.split(/[^0-9]+/).filter(Boolean)).filter(function(v){ return v <= n; });
     renderSkipNote();
     var np = $('newPin').value.trim();
@@ -421,7 +436,7 @@ details.pn table{margin-top:8px}
     try{
       var o = JSON.parse($('backup').value);
       if(!o || typeof o.picks !== 'object') throw 0;
-      S = { total: +o.total || S.total, pin: String(o.pin || S.pin), picks: o.picks, skip: cleanSkip(o.skip), missions: cleanMissions(o.missions) };
+      S = { total: +o.total || S.total, pin: String(o.pin || S.pin), picks: o.picks, skip: cleanSkip(o.skip), missions: cleanMissions(o.missions), weekLimit: (o.weekLimit === undefined ? S.weekLimit : Math.max(0, parseInt(o.weekLimit, 10) || 0)) };
       save(); openTeacher(); $('bkMsg').textContent = '복원했어요 ✅';
     }catch(e){ $('bkMsg').textContent = '백업 내용이 올바르지 않아요.'; }
   };
