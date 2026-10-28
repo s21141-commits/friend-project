@@ -49,12 +49,21 @@ h2{font-size:18px;margin:0 0 10px}
 details.pn{border:2px solid var(--line);border-radius:14px;padding:8px 12px;margin-bottom:8px;background:var(--bg)}
 details.pn summary{cursor:pointer;font-size:17px;font-weight:700}
 details.pn table{margin-top:8px}
+#nameGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:340px;overflow-y:auto;margin-top:10px}
+.nrow{display:flex;align-items:center;gap:6px;margin:0}
+.nrow span{width:30px;text-align:right;font-weight:700}
+.nrow input{font-size:16px;padding:8px;text-align:left}
 .ov-in{width:100%;max-width:520px}
 .ov-title{font-size:30px;margin:0 0 6px}
 .ov-who{font-size:22px;margin:0 0 22px;opacity:.95}
 .ov-text{font-size:34px;line-height:1.45;font-weight:700;background:rgba(255,255,255,.2);border:3px dashed #fff;border-radius:24px;padding:28px 20px;margin:0 0 26px;word-break:keep-all}
 .overlay button{background:#fff;color:#e8590c;font-size:24px;padding:16px;box-shadow:0 5px 0 rgba(0,0,0,.2)}
 .overlay .pop{animation:pop .5s ease}
+.ov-proof{font-size:22px;line-height:1.5;background:rgba(0,0,0,.18);border-radius:18px;padding:16px;margin:-10px 0 24px}
+.mi{border:2px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:8px;background:var(--bg);line-height:1.4}
+.mi b{font-size:17px}
+.mi small{display:block;color:var(--sub);margin-top:4px;font-size:14px}
+.ov-snack{font-size:26px;font-weight:700;background:#fff;color:#e8590c;border-radius:18px;padding:14px;margin:0 0 24px}
 .pop{animation:pop .5s ease}
 @keyframes pop{0%{transform:scale(.3);opacity:0}70%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
 </style>
@@ -71,6 +80,7 @@ details.pn table{margin-top:8px}
     <div id="skipNote" class="msg"></div>
     <div id="loginErr" class="err"></div>
     <button id="btnEnter">들어가기</button>
+    <button id="btnMissionList" class="ghost">📜 미션 목록 보기</button>
     <button id="btnTeacher" class="ghost">👩‍🏫 선생님 메뉴</button>
   </div>
 
@@ -79,11 +89,13 @@ details.pn table{margin-top:8px}
     <div class="card">
       <p class="hi" id="hi"></p>
       <div class="slot" id="slot">?</div>
+      <div id="friendName" style="text-align:center;font-size:28px;font-weight:700;margin-top:-4px"></div>
       <p class="msg big" id="status"></p>
       <div id="mission" class="mission hidden"></div>
       <p class="msg" id="weekNote"></p>
       <button id="btnDraw" class="red">🎁 친구 뽑기!</button>
       <button id="btnBack" class="ghost">처음으로</button>
+      <button id="btnMissionList2" class="ghost">📜 미션 목록 보기</button>
     </div>
     <div class="card">
       <h2>📒 내가 뽑은 친구들</h2>
@@ -91,29 +103,26 @@ details.pn table{margin-top:8px}
     </div>
   </div>
 
+  <!-- 미션 목록 -->
+  <div id="vMissions" class="hidden">
+    <div class="card">
+      <h2>📜 미션 목록</h2>
+      <p class="msg" id="mlCount" style="text-align:left"></p>
+      <div id="mlList"></div>
+      <button id="btnMlBack" class="ghost">돌아가기</button>
+    </div>
+  </div>
+
   <!-- 3. 선생님 메뉴 -->
   <div id="vTeacher" class="hidden">
     <div id="tLock" class="card">
-      <label for="pin">선생님 비밀번호 (처음엔 0000)</label>
+      <label for="pin">선생님 비밀번호</label>
       <input id="pin" type="password" inputmode="numeric" placeholder="••••">
       <div id="pinErr" class="err"></div>
       <button id="btnPin" class="green">열기</button>
       <button class="ghost" data-home>돌아가기</button>
     </div>
     <div id="tOpen" class="hidden">
-      <div class="card">
-        <h2>⚙️ 설정</h2>
-        <label for="total">우리 반 학생 수 (번호는 1번부터)</label>
-        <input id="total" type="number" class="small" min="2" max="60">
-        <label for="skipIn" style="margin-top:12px">없는 번호 (쉼표로 구분, 예: 4, 13)</label>
-        <input id="skipIn" type="text" class="small" placeholder="없으면 비워두세요">
-        <label for="weekIn" style="margin-top:12px">일주일(월~일)에 참여할 수 있는 횟수 (0이면 제한 없음, 하루는 항상 1번)</label>
-        <input id="weekIn" type="number" class="small" min="0" max="7">
-        <label for="newPin" style="margin-top:12px">비밀번호 바꾸기 (비워두면 그대로)</label>
-        <input id="newPin" type="text" class="small" placeholder="새 비밀번호">
-        <button id="btnSaveCfg" class="green">저장</button>
-        <div id="cfgMsg" class="msg"></div>
-      </div>
       <div class="card">
         <h2>📋 오늘의 기록 <span id="todayCount" style="font-size:14px;color:var(--sub)"></span></h2>
         <div id="notYet" class="msg" style="text-align:left"></div>
@@ -123,14 +132,6 @@ details.pn table{margin-top:8px}
         <h2>🔎 번호별 상세</h2>
         <div class="row"><button id="btnOpenAll" class="ghost">모두 펼치기</button><button id="btnCloseAll" class="ghost">모두 접기</button></div>
         <div id="perNum" style="margin-top:12px"></div>
-      </div>
-      <div class="card">
-        <h2>🎯 미션 목록</h2>
-        <label for="missionIn" style="font-size:15px">한 줄에 미션 하나씩 적으세요. 친구를 뽑으면 이 중 하나가 랜덤으로 뜨고, 비워두면 미션이 나오지 않아요.</label>
-        <textarea id="missionIn" spellcheck="false" style="height:150px;font-size:15px" placeholder="예) 좋아하는 음식 물어보기
-예) 오늘 점심 같이 먹기"></textarea>
-        <button id="btnSaveMission" class="green">미션 저장</button>
-        <div id="missionMsg" class="msg"></div>
       </div>
       <div class="card">
         <h2>🛠 도구</h2>
@@ -154,6 +155,8 @@ details.pn table{margin-top:8px}
     <p class="ov-title">🎯 오늘의 미션!</p>
     <p class="ov-who" id="ovWho"></p>
     <div class="ov-text pop" id="ovText"></div>
+    <div class="ov-proof hidden" id="ovProof"></div>
+    <div class="ov-snack hidden" id="ovSnack"></div>
     <button id="btnMissionOk">확인했어요!</button>
   </div>
 </div>
@@ -161,7 +164,53 @@ details.pn table{margin-top:8px}
 <script>
 (function(){
   var KEY = 'randomFriendDraw.v1';
-  var S = load();
+  // ===== 학급 설정 (여기 값만 바꾸면 돼요) =====
+  var CONFIG = {
+    total: 25,        // 학생 수 (마지막 번호)
+    skip: [10, 14, 22], // 없는 번호
+    weekLimit: 5,     // 일주일(월~일) 참여 횟수 (0이면 제한 없음)
+    pin: '0000',      // 선생님 비밀번호
+    // 보상 간식 목록 (미션에 snack을 따로 지정하면 그 간식이 나와요)
+    snacks: ['알맹이 젤리', '에낙', '하리보 사운드 큐브 젤리', '피크닉 젤리', '미니벨', '미니 꽈배기', '뉴트리오코 밀크초콜릿', 'Siip', '참 붕어빵', '쿠키 초코짱'],
+    // 미션 목록 (인증이 필요한 미션은 proof: '인증 방법' 을 추가)
+    missions: [
+      { t: '밸런스 게임' },
+      { t: '손가락 텔레파시 5회' },
+      { t: '책장 펼치기 숫자' },
+      { t: '릴레이 10자 완성하기', proof: '10글자 문장 적어서 검사받기' },
+      { t: 'TMI 주고받기', proof: '서로 주고받은 TMI 적어서 검사받기' },
+      { t: '마라맛 쫀디기 라티오 나눠먹기', snack: '라티오' },
+      { t: '초코하임 나눠 먹기', proof: '서로 좋아하는 과자 이름 적어서 검사받기', snack: '초코하임' },
+      { t: '좋아하는 것 싫어하는 것 5가지씩 말하기', proof: '서로 좋아하는 것과 싫어하는 것을 말한 것 중 3가지씩 적어서 검사받기' },
+      { t: '초성 이름 n행시 짓기', proof: '서로 초성으로 N행시 만들어서 공유하고 검사받기' },
+      { t: '짝꿍 틀린 그림 찾기', proof: '어떤 것들을 서로 찾았는지 말해서 검사받기' },
+      { t: '서로의 장점 3가지씩 말하기', proof: '서로의 장점을 말한 것을 종이에 적어서 검사받기' },
+      { t: '내 짝꿍을 소개합니다', proof: '설명을 들은 다른 친구가 활동을 제대로 했는지 인증해 주기' },
+      { t: '노래 공유', proof: '서로 어떤 노래를 좋아하는지 검사자에게 적어서 검사받기' },
+      { t: '블라인드 짝꿍 얼굴 그리기', proof: '서로 얼굴 그린 결과물로 검사받기' },
+      { t: '병뚜껑/지우개 핑퐁', proof: '놀이 결과를 보고하여 인증받기' },
+      { t: '스무고개', proof: '스무고개 결과를 보고하기' },
+      { t: '최애 아이돌/음식/게임 맞추기', proof: '서로 좋아하는 최애 아이돌과 음식, 게임을 적어서 검사받기' },
+      { t: '친구랑 책상에서 알까기', proof: '놀이 결과를 보고하기' },
+      { t: '짝꿍 프로필 작성', proof: '서로 프로필을 작성해서 보고하기' },
+      { t: '양세찬 게임', proof: '게임으로 어떤 단어를 했는지, 결과는 어떤지 보고하기' },
+      { t: '청기백기 게임', proof: '놀이 결과를 보고하여 검사받기' }
+    ],
+    names: {
+      1: '김도형', 2: '김사랑', 3: '김윤오', 4: '김진후', 5: '남하연',
+      6: '박예서', 7: '박은호', 8: '서지호', 9: '양예원', 11: '우현주',
+      12: '유한별', 13: '이루리', 15: '이서우', 16: '임주환', 17: '장효지',
+      18: '조연우', 19: '최아임', 20: '최하준', 21: '하히로토', 23: '황다미',
+      24: '장지윤', 25: '박선정'
+    }
+  };
+  // ============================================
+  var S = load(); applyConfig();
+  function applyConfig(){
+    S.total = CONFIG.total; S.skip = cleanSkip(CONFIG.skip); S.weekLimit = CONFIG.weekLimit;
+    S.pin = String(CONFIG.pin); S.missions = cleanMissions(CONFIG.missions); S.names = cleanNames(CONFIG.names);
+    S.snacks = (CONFIG.snacks || []).map(function(x){ return String(x).trim(); }).filter(Boolean);
+  }
   var me = null, busy = false, saveWarned = false;
 
   function $(id){ return document.getElementById(id); }
@@ -170,16 +219,31 @@ details.pn table{margin-top:8px}
     (Array.isArray(a) ? a : []).forEach(function(v){ v = parseInt(v, 10); if(v > 0 && r.indexOf(v) < 0) r.push(v); });
     return r.sort(function(a, b){ return a - b; });
   }
+  function cleanNames(o){
+    var r = {};
+    if(o && typeof o === 'object') for(var k in o){
+      var n = parseInt(k, 10), v = String(o[k] || '').trim().slice(0, 10);
+      if(n > 0 && v) r[n] = v;
+    }
+    return r;
+  }
+  function nm(n){ return S.names && S.names[n] ? ' ' + S.names[n] : ''; }
+  function lbl(n){ return n + '번' + nm(n); }
+  function escH(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function cleanMissions(a){
-    return (Array.isArray(a) ? a : []).map(function(m){ return String(m).trim(); }).filter(Boolean);
+    return (Array.isArray(a) ? a : []).map(function(m){
+      if(typeof m === 'string') m = { t: m };
+      return { t: String((m && m.t) || '').trim(), proof: String((m && m.proof) || '').trim(), snack: String((m && m.snack) || '').trim() };
+    }).filter(function(m){ return m.t; });
   }
   function pickMission(){
-    if(!S.missions.length) return '';
+    if(!S.missions.length) return null;
     var used = (S.picks[me] || []).map(function(p){ return p.mission; });
-    var pool = S.missions.filter(function(m){ return used.indexOf(m) < 0; });
+    var pool = S.missions.filter(function(m){ return used.indexOf(m.t) < 0; });
     if(!pool.length) pool = S.missions;
     return pool[Math.floor(Math.random() * pool.length)];
   }
+  function randomSnack(){ return S.snacks && S.snacks.length ? S.snacks[Math.floor(Math.random() * S.snacks.length)] : ''; }
   function isActive(i){ return i >= 1 && i <= S.total && S.skip.indexOf(i) < 0; }
   function activeList(){ var l = []; for(var i = 1; i <= S.total; i++) if(isActive(i)) l.push(i); return l; }
   function randActive(){ var l = activeList(); return l.length ? l[Math.floor(Math.random() * l.length)] : '?'; }
@@ -192,10 +256,10 @@ details.pn table{margin-top:8px}
       var raw = localStorage.getItem(KEY);
       if(raw){
         var o = JSON.parse(raw);
-        if(o && typeof o === 'object') return { total: +o.total || 25, pin: String(o.pin || '0000'), picks: o.picks || {}, skip: cleanSkip(o.skip), missions: cleanMissions(o.missions), weekLimit: (o.weekLimit === undefined ? 3 : Math.max(0, parseInt(o.weekLimit, 10) || 0)) };
+        if(o && typeof o === 'object') return { total: +o.total || 25, pin: String(o.pin || '0000'), picks: o.picks || {}, skip: cleanSkip(o.skip), missions: cleanMissions(o.missions), weekLimit: (o.weekLimit === undefined ? 3 : Math.max(0, parseInt(o.weekLimit, 10) || 0)), names: cleanNames(o.names) };
       }
     }catch(e){}
-    return { total: 25, pin: '0000', picks: {}, skip: [], missions: [], weekLimit: 3 };
+    return { total: 25, pin: '0000', picks: {}, skip: [], missions: [], weekLimit: 3, names: {} };
   }
   function save(){
     try{ localStorage.setItem(KEY, JSON.stringify(S)); return true; }
@@ -207,7 +271,7 @@ details.pn table{margin-top:8px}
   }
   function mmdd(s){ return s.slice(5).replace('-', '/'); }
   function show(name){
-    ['vLogin','vMe','vTeacher'].forEach(function(v){ $(v).classList.add('hidden'); });
+    ['vLogin','vMe','vTeacher','vMissions'].forEach(function(v){ $(v).classList.add('hidden'); });
     $(name).classList.remove('hidden');
   }
   function home(){
@@ -258,19 +322,22 @@ details.pn table{margin-top:8px}
     me = n; renderMe(); show('vMe');
   }
   function renderMe(){
-    $('hi').textContent = '안녕, ' + me + '번! 👋';
+    $('hi').textContent = '안녕, ' + lbl(me) + '! 👋';
     var t = drewToday(me), left = candidates(me).length;
     var btn = $('btnDraw');
     $('slot').textContent = t ? t.to : '?';
     $('weekNote').textContent = S.weekLimit > 0 ? '이번 주 참여 ' + weekCount(me) + '/' + S.weekLimit + '회' : '';
+    $('friendName').textContent = t && S.names[t.to] ? S.names[t.to] : '';
     var mb = $('mission');
-    if(t && t.mission){
+    if(t && (t.mission || t.snack)){
       mb.innerHTML = '<b>🎯 오늘의 미션</b>';
       var sp = document.createElement('span'); sp.textContent = t.mission; mb.appendChild(sp);
+      if(t.proof){ var pe = document.createElement('div'); pe.style.marginTop = '8px'; pe.textContent = '📸 인증: ' + t.proof; mb.appendChild(pe); }
+      if(t.snack){ var se = document.createElement('div'); se.style.marginTop = '8px'; se.textContent = '🍬 보상 간식: ' + t.snack; mb.appendChild(se); }
       mb.classList.remove('hidden');
     }else mb.classList.add('hidden');
     if(t){
-      $('status').textContent = '오늘은 ' + t.to + '번 친구를 뽑았어요! 내일 또 만나요 😊';
+      $('status').textContent = '오늘은 ' + lbl(t.to) + ' 친구를 뽑았어요! 내일 또 만나요 😊';
       btn.disabled = true; btn.textContent = '오늘은 끝!';
     }else if(weekFull(me)){
       $('status').textContent = '이번 주 참여는 모두 끝났어요! 다음 주 월요일에 만나요 😊';
@@ -287,7 +354,7 @@ details.pn table{margin-top:8px}
     if(!list.length){ h.innerHTML = '<span class="msg">아직 뽑은 친구가 없어요.</span>'; }
     list.forEach(function(p){
       var c = document.createElement('span'); c.className = 'chip';
-      c.innerHTML = p.to + '번 <small>' + mmdd(p.date) + '</small>';
+      c.innerHTML = escH(lbl(p.to)) + ' <small>' + mmdd(p.date) + '</small>';
       h.appendChild(c);
     });
   }
@@ -300,7 +367,8 @@ details.pn table{margin-top:8px}
     var pick = c[Math.floor(Math.random() * c.length)];
     busy = true;
     // 애니메이션 도중 닫아도 다시 뽑지 못하게 바로 기록
-    (S.picks[me] = S.picks[me] || []).push({ to: pick, date: today(), mission: pickMission() });
+    var pm = pickMission();
+    (S.picks[me] = S.picks[me] || []).push({ to: pick, date: today(), mission: pm ? pm.t : '', proof: pm ? pm.proof : '', snack: (pm && pm.snack) || randomSnack() });
     if(!save() && !saveWarned){ saveWarned = true; $('status').textContent = '⚠️ 저장이 안 되는 브라우저예요. 선생님께 알려주세요!'; }
     $('btnDraw').disabled = true;
     $('status').textContent = '두근두근…';
@@ -313,18 +381,16 @@ details.pn table{margin-top:8px}
         slot.classList.remove('pop'); void slot.offsetWidth; slot.classList.add('pop');
         busy = false;
         renderMe();
-        $('status').textContent = '🎉 ' + pick + '번 친구가 뽑혔어요! 오늘 꼭 말을 걸어 보세요!';
+        $('status').textContent = '🎉 ' + lbl(pick) + ' 친구가 뽑혔어요! 오늘 꼭 말을 걸어 보세요!';
         var rm = drewToday(me);
-        if(rm && rm.mission) setTimeout(function(){ showMission(pick, rm.mission); }, 900);
+        if(rm && (rm.mission || rm.snack)) setTimeout(function(){ showMission(pick, rm.mission, rm.proof, rm.snack); }, 900);
       }
     }, 80);
   }
 
   // ---- 선생님 ----
   function openTeacher(){
-    $('total').value = S.total; $('skipIn').value = S.skip.filter(function(v){ return v <= S.total; }).join(', '); $('newPin').value = '';
-    $('missionIn').value = S.missions.join('\n'); $('weekIn').value = S.weekLimit; $('missionMsg').textContent = '';
-    $('cfgMsg').textContent = $('undoMsg').textContent = $('bkMsg').textContent = $('resetMsg').textContent = '';
+    $('undoMsg').textContent = $('bkMsg').textContent = $('resetMsg').textContent = '';
     renderTable();
     $('tLock').classList.add('hidden'); $('tOpen').classList.remove('hidden');
   }
@@ -336,15 +402,15 @@ details.pn table{margin-top:8px}
       var tl = list.filter(function(p){ return p.date === t; });
       if(tl.length) done++; else if(!weekFull(i)) pending.push(i);
       var cell = tl.map(function(p){
-        return '<div style="margin-bottom:6px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline"><span>👉 <b>' + p.to + '번</b>을 뽑음 <span style="color:var(--sub)">(' + mmdd(p.date) + ')</span></span>' + (p.mission ? '<span>🎯 ' + esc(p.mission) + '</span>' : '') + '</div>';
+        return '<div style="margin-bottom:6px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline"><span>👉 <b>' + escH(lbl(p.to)) + '</b>을 뽑음 <span style="color:var(--sub)">(' + mmdd(p.date) + ')</span></span>' + (p.mission ? '<span>🎯 ' + esc(p.mission) + (p.proof ? ' <small>(📸 ' + esc(p.proof) + ')</small>' : '') + '</span>' : '') + (p.snack ? '<span>🍬 ' + esc(p.snack) + '</span>' : '') + '</div>';
       }).join('');
       for(var k in S.picks){
         (S.picks[k] || []).forEach(function(p){
-          if(p.to === i && p.date === t) cell += '<div style="margin-bottom:6px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline"><span>👈 <b>' + k + '번</b>에게 뽑힘 <span style="color:var(--sub)">(' + mmdd(p.date) + ')</span></span>' + (p.mission ? '<span>🎯 ' + esc(p.mission) + '</span>' : '') + '</div>';
+          if(p.to === i && p.date === t) cell += '<div style="margin-bottom:6px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline"><span>👈 <b>' + escH(lbl(+k)) + '</b>에게 뽑힘 <span style="color:var(--sub)">(' + mmdd(p.date) + ')</span></span>' + (p.mission ? '<span>🎯 ' + esc(p.mission) + (p.proof ? ' <small>(📸 ' + esc(p.proof) + ')</small>' : '') + '</span>' : '') + (p.snack ? '<span>🍬 ' + esc(p.snack) + '</span>' : '') + '</div>';
         });
       }
       if(!cell) cell = '-';
-      html += '<tr><td>' + i + '</td><td>' + cell + '</td></tr>';
+      html += '<tr><td>' + i + (S.names[i] ? '<br><small>' + escH(S.names[i]) + '</small>' : '') + '</td><td>' + cell + '</td></tr>';
       
     }
     
@@ -365,25 +431,44 @@ details.pn table{margin-top:8px}
     var esc = function(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
     for(var i = 1; i <= S.total; i++){
       if(!isActive(i)){ html += '<div class="msg" style="text-align:left">' + i + '번 🚫 없는 번호</div>'; continue; }
-      var recs = (S.picks[i] || []).map(function(p){ return { kind: 0, other: p.to, d: p.date, m: p.mission || '' }; });
+      var recs = (S.picks[i] || []).map(function(p){ return { kind: 0, other: p.to, d: p.date, m: p.mission || '', pf: p.proof || '', sn: p.snack || '' }; });
       var a = recs.length, b = 0;
       for(var k in S.picks){
-        (S.picks[k] || []).forEach(function(p){ if(p.to === i){ recs.push({ kind: 1, other: +k, d: p.date, m: p.mission || '' }); b++; } });
+        (S.picks[k] || []).forEach(function(p){ if(p.to === i){ recs.push({ kind: 1, other: +k, d: p.date, m: p.mission || '', pf: p.proof || '', sn: p.snack || '' }); b++; } });
       }
       recs.sort(function(x, y){ return x.d < y.d ? -1 : x.d > y.d ? 1 : x.kind - y.kind; });
       var body = recs.length ? '<table class="tbl"><tr><th>날짜</th><th>구분</th><th>상대</th><th>미션</th></tr>' + recs.map(function(r){
-        return '<tr><td>' + mmdd(r.d) + '</td><td>' + (r.kind ? '👈 뽑힘' : '👉 뽑음') + '</td><td><b>' + r.other + '번</b></td><td>' + (r.m ? '🎯 ' + esc(r.m) : '-') + '</td></tr>';
+        return '<tr><td>' + mmdd(r.d) + '</td><td>' + (r.kind ? '👈 뽑힘' : '👉 뽑음') + '</td><td><b>' + escH(lbl(r.other)) + '</b></td><td>' + (r.m ? '🎯 ' + esc(r.m) + (r.pf ? '<br><small>📸 인증: ' + esc(r.pf) + '</small>' : '') : '-') + (r.sn ? '<br><small>🍬 보상: ' + esc(r.sn) + '</small>' : '') + '</td></tr>';
       }).join('') + '</table>' : '<div class="msg" style="text-align:left">아직 기록이 없어요.</div>';
-      html += '<details class="pn" data-n="' + i + '"' + (openSet[i] ? ' open' : '') + '><summary>' + i + '번 <span style="font-weight:400;color:var(--sub);font-size:14px">· 뽑음 ' + a + ' · 뽑힘 ' + b + ' · 이번 주 ' + weekCount(i) + (S.weekLimit ? '/' + S.weekLimit : '') + '회</span></summary>' + body + '</details>';
+      html += '<details class="pn" data-n="' + i + '"' + (openSet[i] ? ' open' : '') + '><summary>' + escH(lbl(i)) + ' <span style="font-weight:400;color:var(--sub);font-size:14px">· 뽑음 ' + a + ' · 뽑힘 ' + b + ' · 이번 주 ' + weekCount(i) + (S.weekLimit ? '/' + S.weekLimit : '') + '회</span></summary>' + body + '</details>';
     }
     box.innerHTML = html;
+  }
+  var missionBack = 'vLogin';
+  function openMissionList(from){
+    missionBack = from;
+    var box = $('mlList'); box.innerHTML = '';
+    $('mlCount').textContent = '친구를 뽑으면 이 중 하나가 랜덤으로 나와요! (총 ' + S.missions.length + '개)';
+    S.missions.forEach(function(m, i){
+      var d = document.createElement('div'); d.className = 'mi';
+      var b = document.createElement('b'); b.textContent = (i + 1) + '. ' + m.t; d.appendChild(b);
+      var s = document.createElement('small'); s.textContent = m.proof ? '📸 인증: ' + m.proof : '인증 없음'; d.appendChild(s);
+      if(m.snack){ var sn = document.createElement('small'); sn.textContent = '🍬 보상 간식: ' + m.snack; d.appendChild(sn); }
+      box.appendChild(d);
+    });
+    if(!S.missions.length) box.innerHTML = '<div class="msg">아직 미션이 없어요.</div>';
+    show('vMissions'); window.scrollTo(0, 0);
   }
   function resetArm(){ $('btnReset').dataset.arm = ''; $('btnReset').textContent = '🗑 모든 기록 지우기'; }
 
   renderSkipNote();
-  function showMission(friend, text){
-    $('ovWho').textContent = friend + '번 친구와 함께!';
-    $('ovText').textContent = text;
+  function showMission(friend, text, proof, snack){
+    $('ovWho').textContent = lbl(friend) + ' 친구와 함께!';
+    $('ovText').textContent = text || '친구와 즉거운 이야기를 나눠 보세요!';
+    var pf = $('ovProof');
+    if(proof){ pf.textContent = '📸 인증: ' + proof; pf.classList.remove('hidden'); } else pf.classList.add('hidden');
+    var sk = $('ovSnack');
+    if(snack){ sk.textContent = '🍬 보상 간식: ' + snack; sk.classList.remove('hidden'); } else sk.classList.add('hidden');
     var o = $('missionOverlay'); o.classList.remove('hidden'); o.scrollTop = 0;
     var t = $('ovText'); t.classList.remove('pop'); void t.offsetWidth; t.classList.add('pop');
   }
@@ -394,30 +479,17 @@ details.pn table{margin-top:8px}
   $('btnDraw').onclick = draw;
   $('btnBack').onclick = function(){ if(!busy) home(); };
   $('btnTeacher').onclick = function(){ show('vTeacher'); };
+  $('btnMissionList').onclick = function(){ openMissionList('vLogin'); };
+  $('btnMissionList2').onclick = function(){ if(!busy) openMissionList('vMe'); };
+  $('btnMlBack').onclick = function(){ show(missionBack); };
   Array.prototype.forEach.call(document.querySelectorAll('[data-home]'), function(b){ b.onclick = home; });
   $('btnPin').onclick = function(){
     if($('pin').value === S.pin){ $('pinErr').textContent = ''; openTeacher(); }
     else $('pinErr').textContent = '비밀번호가 달라요.';
   };
   $('pin').onkeydown = function(e){ if(e.key === 'Enter') $('btnPin').click(); };
-  $('btnSaveCfg').onclick = function(){
-    var n = parseInt($('total').value, 10);
-    if(!n || n < 2 || n > 60){ $('cfgMsg').textContent = '학생 수는 2~60명 사이로 해 주세요.'; return; }
-    S.total = n;
-    var wl = parseInt($('weekIn').value, 10); S.weekLimit = (wl > 0 ? Math.min(wl, 7) : 0);
-    S.skip = cleanSkip($('skipIn').value.split(/[^0-9]+/).filter(Boolean)).filter(function(v){ return v <= n; });
-    renderSkipNote();
-    var np = $('newPin').value.trim();
-    if(np) S.pin = np;
-    $('cfgMsg').textContent = save() ? '저장했어요 ✅' : '저장 실패 😢';
-    $('newPin').value = ''; renderTable();
-  };
   $('btnOpenAll').onclick = function(){ Array.prototype.forEach.call($('perNum').querySelectorAll('details'), function(d){ d.open = true; }); };
   $('btnCloseAll').onclick = function(){ Array.prototype.forEach.call($('perNum').querySelectorAll('details'), function(d){ d.open = false; }); };
-  $('btnSaveMission').onclick = function(){
-    S.missions = cleanMissions($('missionIn').value.split('\n'));
-    $('missionMsg').textContent = save() ? '미션 ' + S.missions.length + '개 저장했어요 ✅' : '저장 실패 😢';
-  };
   $('btnUndo').onclick = function(){
     var n = parseInt($('undoNum').value, 10), list = S.picks[n] || [], t = today();
     var idx = -1;
@@ -428,7 +500,7 @@ details.pn table{margin-top:8px}
     $('undoMsg').textContent = n + '번의 오늘 기록(' + removed.to + '번)을 취소했어요.';
   };
   $('btnExport').onclick = function(){
-    $('backup').value = JSON.stringify(S);
+    $('backup').value = JSON.stringify({ picks: S.picks });
     $('backup').select();
     $('bkMsg').textContent = '이 글을 복사해서 메모장 등에 보관하세요.';
   };
@@ -436,7 +508,7 @@ details.pn table{margin-top:8px}
     try{
       var o = JSON.parse($('backup').value);
       if(!o || typeof o.picks !== 'object') throw 0;
-      S = { total: +o.total || S.total, pin: String(o.pin || S.pin), picks: o.picks, skip: cleanSkip(o.skip), missions: cleanMissions(o.missions), weekLimit: (o.weekLimit === undefined ? S.weekLimit : Math.max(0, parseInt(o.weekLimit, 10) || 0)) };
+      S.picks = o.picks; applyConfig();
       save(); openTeacher(); $('bkMsg').textContent = '복원했어요 ✅';
     }catch(e){ $('bkMsg').textContent = '백업 내용이 올바르지 않아요.'; }
   };
