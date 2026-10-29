@@ -64,6 +64,8 @@ details.pn table{margin-top:8px}
 .mi b{font-size:17px}
 .mi small{display:block;color:var(--sub);margin-top:4px;font-size:14px}
 .ov-snack{font-size:26px;font-weight:700;background:#fff;color:#e8590c;border-radius:18px;padding:14px;margin:0 0 24px}
+.gl{display:block;text-align:center;text-decoration:none;font-size:18px;font-weight:700;border-radius:14px;padding:12px;margin-top:10px;background:var(--accent2);color:#fff;box-shadow:0 4px 0 rgba(0,0,0,.18)}
+.overlay .gl{background:#ffe066;color:#c2410c;font-size:22px;margin:-8px 0 22px}
 .pop{animation:pop .5s ease}
 @keyframes pop{0%{transform:scale(.3);opacity:0}70%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
 </style>
@@ -157,6 +159,7 @@ details.pn table{margin-top:8px}
     <div class="ov-text pop" id="ovText"></div>
     <div class="ov-proof hidden" id="ovProof"></div>
     <div class="ov-snack hidden" id="ovSnack"></div>
+    <div id="ovLink" class="hidden"></div>
     <button id="btnMissionOk">확인했어요!</button>
   </div>
 </div>
@@ -174,10 +177,10 @@ details.pn table{margin-top:8px}
     snacks: ['알맹이 젤리', '에낙', '하리보 사운드 큐브 젤리', '피크닉 젤리', '미니벨', '미니 꽈배기', '뉴트리오코 밀크초콜릿', 'Siip', '참 붕어빵', '쿠키 초코짱'],
     // 미션 목록 (인증이 필요한 미션은 proof: '인증 방법' 을 추가)
     missions: [
-      { t: '밸런스 게임' },
-      { t: '손가락 텔레파시 5회' },
-      { t: '책장 펼치기 숫자' },
-      { t: '릴레이 10자 완성하기', proof: '10글자 문장 적어서 검사받기' },
+      { t: '밸런스 게임', link: 'https://s21141-commits.github.io/friend-project--balance/' },
+      { t: '손가락 텔레파시 5회', link: 'https://s21141-commits.github.io/friend-project--finger-game/' },
+      { t: '책장 펼치기 숫자', link: 'https://s21141-commits.github.io/friend-project--book-page/' },
+      { t: '릴레이 10자 완성하기', proof: '10글자 문장 적어서 검사받기', link: 'https://s21141-commits.github.io/friend-project--relay-10/' },
       { t: 'TMI 주고받기', proof: '서로 주고받은 TMI 적어서 검사받기' },
       { t: '마라맛 쫀디기 라티오 나눠먹기', snack: '라티오' },
       { t: '초코하임 나눠 먹기', proof: '서로 좋아하는 과자 이름 적어서 검사받기', snack: '초코하임' },
@@ -233,7 +236,7 @@ details.pn table{margin-top:8px}
   function cleanMissions(a){
     return (Array.isArray(a) ? a : []).map(function(m){
       if(typeof m === 'string') m = { t: m };
-      return { t: String((m && m.t) || '').trim(), proof: String((m && m.proof) || '').trim(), snack: String((m && m.snack) || '').trim() };
+      return { t: String((m && m.t) || '').trim(), proof: String((m && m.proof) || '').trim(), snack: String((m && m.snack) || '').trim(), link: String((m && m.link) || '').trim() };
     }).filter(function(m){ return m.t; });
   }
   function pickMission(){
@@ -242,6 +245,11 @@ details.pn table{margin-top:8px}
     var pool = S.missions.filter(function(m){ return used.indexOf(m.t) < 0; });
     if(!pool.length) pool = S.missions;
     return pool[Math.floor(Math.random() * pool.length)];
+  }
+  function missionLink(text){ var l = ''; S.missions.forEach(function(m){ if(m.t === text && m.link) l = m.link; }); return l; }
+  function linkBtn(url, cls){
+    var a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = '🎮 게임하러 가기 →'; a.className = cls || 'gl'; return a;
   }
   function randomSnack(){ return S.snacks && S.snacks.length ? S.snacks[Math.floor(Math.random() * S.snacks.length)] : ''; }
   function isActive(i){ return i >= 1 && i <= S.total && S.skip.indexOf(i) < 0; }
@@ -334,6 +342,7 @@ details.pn table{margin-top:8px}
       var sp = document.createElement('span'); sp.textContent = t.mission; mb.appendChild(sp);
       if(t.proof){ var pe = document.createElement('div'); pe.style.marginTop = '8px'; pe.textContent = '📸 인증: ' + t.proof; mb.appendChild(pe); }
       if(t.snack){ var se = document.createElement('div'); se.style.marginTop = '8px'; se.textContent = '🍬 보상 간식: ' + t.snack; mb.appendChild(se); }
+      var ul = missionLink(t.mission); if(ul) mb.appendChild(linkBtn(ul, 'gl'));
       mb.classList.remove('hidden');
     }else mb.classList.add('hidden');
     if(t){
@@ -454,6 +463,7 @@ details.pn table{margin-top:8px}
       var b = document.createElement('b'); b.textContent = (i + 1) + '. ' + m.t; d.appendChild(b);
       var s = document.createElement('small'); s.textContent = m.proof ? '📸 인증: ' + m.proof : '인증 없음'; d.appendChild(s);
       if(m.snack){ var sn = document.createElement('small'); sn.textContent = '🍬 보상 간식: ' + m.snack; d.appendChild(sn); }
+      if(m.link) d.appendChild(linkBtn(m.link, 'gl'));
       box.appendChild(d);
     });
     if(!S.missions.length) box.innerHTML = '<div class="msg">아직 미션이 없어요.</div>';
@@ -469,6 +479,8 @@ details.pn table{margin-top:8px}
     if(proof){ pf.textContent = '📸 인증: ' + proof; pf.classList.remove('hidden'); } else pf.classList.add('hidden');
     var sk = $('ovSnack');
     if(snack){ sk.textContent = '🍬 보상 간식: ' + snack; sk.classList.remove('hidden'); } else sk.classList.add('hidden');
+    var lk = $('ovLink'), url = missionLink(text); lk.innerHTML = '';
+    if(url){ lk.appendChild(linkBtn(url, 'gl')); lk.classList.remove('hidden'); } else lk.classList.add('hidden');
     var o = $('missionOverlay'); o.classList.remove('hidden'); o.scrollTop = 0;
     var t = $('ovText'); t.classList.remove('pop'); void t.offsetWidth; t.classList.add('pop');
   }
