@@ -74,6 +74,7 @@ details.pn table{margin-top:8px}
 <div class="wrap">
   <h1>🎲 랜덤 친구 뽑기</h1>
   <p class="sub">하루에 한 번, 새로운 친구를 만나요!</p>
+  <p id="netNote" class="msg" style="color:var(--accent)"></p>
 
   <!-- 1. 번호 입력 -->
   <div id="vLogin" class="card">
@@ -173,6 +174,14 @@ details.pn table{margin-top:8px}
     skip: [10, 14, 22], // 없는 번호
     weekLimit: 5,     // 일주일(월~일) 참여 횟수 (0이면 제한 없음)
     pin: '0000',      // 선생님 비밀번호
+    firebase: {      // Firebase 설정값 (여러 기기가 기록을 공유)
+      apiKey: "AIzaSyBbg-iZd98bx944tqAjOVf_ln3pd6pOWq0",
+      authDomain: "random-5f497.firebaseapp.com",
+      projectId: "random-5f497",
+      storageBucket: "random-5f497.firebasestorage.app",
+      messagingSenderId: "79376460705",
+      appId: "1:79376460705:web:6a1842706db3619e0379e0"
+    },
     // 보상 간식 목록 (미션에 snack을 따로 지정하면 그 간식이 나와요)
     snacks: ['알맹이 젤리', '에낙', '하리보 사운드 큐브 젤리', '피크닉 젤리', '미니벨', '미니 꽈배기', '뉴트리오코 밀크초콜릿', 'Siip', '참 붕어빵', '쿠키 초코짱'],
     // 미션 목록 (인증이 필요한 미션은 proof: '인증 방법' 을 추가)
@@ -209,12 +218,15 @@ details.pn table{margin-top:8px}
   };
   // ============================================
   var S = load(); applyConfig();
+  var cloudMode = !!(CONFIG.firebase && CONFIG.firebase.apiKey);
+  if(cloudMode) S.picks = {};
   function applyConfig(){
     S.total = CONFIG.total; S.skip = cleanSkip(CONFIG.skip); S.weekLimit = CONFIG.weekLimit;
     S.pin = String(CONFIG.pin); S.missions = cleanMissions(CONFIG.missions); S.names = cleanNames(CONFIG.names);
     S.snacks = (CONFIG.snacks || []).map(function(x){ return String(x).trim(); }).filter(Boolean);
   }
   var me = null, busy = false, saveWarned = false;
+  var DB = null, cloudReady = false;
 
   function $(id){ return document.getElementById(id); }
   function cleanSkip(a){
@@ -270,6 +282,7 @@ details.pn table{margin-top:8px}
     return { total: 25, pin: '0000', picks: {}, skip: [], missions: [], weekLimit: 3, names: {} };
   }
   function save(){
+    if(cloudMode) return true;
     try{ localStorage.setItem(KEY, JSON.stringify(S)); return true; }
     catch(e){ return false; }
   }
@@ -327,6 +340,7 @@ details.pn table{margin-top:8px}
     var n = parseInt($('myNum').value, 10);
     if(!n || n < 1 || n > S.total){ $('loginErr').textContent = '1번부터 ' + S.total + '번 사이의 번호를 써 주세요!'; return; }
     if(!isActive(n)){ $('loginErr').textContent = n + '번은 없는 번호예요. 다시 확인해 주세요!'; return; }
+    if(cloudMode && !cloudReady){ $('loginErr').textContent = '서버에 연결 중이에요. 잠시 후 다시 눌러 주세요!'; return; }
     me = n; renderMe(); show('vMe');
   }
   function renderMe(){
@@ -369,18 +383,60 @@ details.pn table{margin-top:8px}
   }
 
   // ---- 뽑기 ----
+  // 현재 기록(S.picks) 기준으로 규칙을 검사하고 뽑을 친구와 기록 한 줄을 만든다
+  function makePick(x){
+    if(drewToday(x)) return { err: '오늘은 이미 뽑았어요!' };
+    if(weekFull(x)) return { err: '이번 주 참여는 모두 끝났어요!' };
+    var c = candidates(x);
+    if(!c.length) return { err: '지금은 뽑을 수 있는 친구가 없어요.' };
+    var pick = c[Math.floor(Math.random() * c.length)];
+    var pm = pickMission();
+    return { pick: pick, rec: { to: pick, date: today(), mission: pm ? pm.t : '', proof: pm ? pm.proof : '', snack: (pm && pm.snack) || randomSnack() } };
+  }
+  function localPick(x){
+    var r = makePick(x);
+    if(r.err) return r;
+    (S.picks[x] = S.picks[x] || []).push(r.rec);
+    if(!save() && !saveWarned){ saveWarned = true; $('status').textContent = '⚠️ 저장이 안 되는 브라우저예요. 선생님께 알려주세요!'; }
+    return r;
+  }
+  // 서버에서는 모든 기록을 새로 읽고 검사한 뒤 한 번에 저장한다 (동시에 뽑아도 규칙이 지켜짐)
+  function cloudPick(x){
+    var col = DB.collection('draws'), result = null, finalMine = null;
+    return DB.runTransaction(function(tx){
+      var ids = []; for(var i = 1; i <= S.total; i++) ids.push(i);
+      return Promise.all(ids.map(function(i){ return tx.get(col.doc(String(i))); })).then(function(snaps){
+        var fresh = {};
+        snaps.forEach(function(sn, idx){
+          var d = sn.exists ? sn.data() : null;
+          fresh[ids[idx]] = d && Array.isArray(d.picks) ? d.picks.slice() : [];
+        });
+        var old = S.picks; S.picks = fresh;
+        var r; try{ r = makePick(x); } finally { S.picks = old; }
+        result = r;
+        if(!r.err){ finalMine = fresh[x].concat([r.rec]); tx.set(col.doc(String(x)), { picks: finalMine }); }
+      });
+    }).then(function(){
+      if(result && !result.err) S.picks[x] = finalMine;
+      return result;
+    });
+  }
   function draw(){
     if(busy || drewToday(me) || weekFull(me)) return;
-    var c = candidates(me);
-    if(!c.length) return;
-    var pick = c[Math.floor(Math.random() * c.length)];
+    if(cloudMode && !cloudReady) return;
     busy = true;
-    // 애니메이션 도중 닫아도 다시 뽑지 못하게 바로 기록
-    var pm = pickMission();
-    (S.picks[me] = S.picks[me] || []).push({ to: pick, date: today(), mission: pm ? pm.t : '', proof: pm ? pm.proof : '', snack: (pm && pm.snack) || randomSnack() });
-    if(!save() && !saveWarned){ saveWarned = true; $('status').textContent = '⚠️ 저장이 안 되는 브라우저예요. 선생님께 알려주세요!'; }
     $('btnDraw').disabled = true;
     $('status').textContent = '두근두근…';
+    var step = cloudMode ? cloudPick(me) : Promise.resolve(localPick(me));
+    step.then(function(res){
+      if(res.err){ busy = false; renderMe(); $('status').textContent = res.err; return; }
+      animate(res.pick, res.rec);
+    }).catch(function(){
+      busy = false; renderMe();
+      $('status').textContent = '⚠️ 서버 오류로 뽑지 못했어요. 잠시 후 다시 눌러 주세요.';
+    });
+  }
+  function animate(pick, rec){
     var slot = $('slot'), count = 0;
     var timer = setInterval(function(){
       slot.textContent = randActive();
@@ -391,10 +447,63 @@ details.pn table{margin-top:8px}
         busy = false;
         renderMe();
         $('status').textContent = '🎉 ' + lbl(pick) + ' 친구가 뽑혔어요! 오늘 꼭 말을 걸어 보세요!';
-        var rm = drewToday(me);
-        if(rm && (rm.mission || rm.snack)) setTimeout(function(){ showMission(pick, rm.mission, rm.proof, rm.snack); }, 900);
+        if(rec && (rec.mission || rec.snack)) setTimeout(function(){ showMission(pick, rec.mission, rec.proof, rec.snack); }, 900);
       }
     }, 80);
+  }
+
+  // ---- 서버(Firebase) ----
+  function setNet(msg){ $('netNote').textContent = msg; }
+  function loadScript(src, cb){
+    var el = document.createElement('script'); el.src = src;
+    el.onload = function(){ cb(null); }; el.onerror = function(){ cb(new Error('load')); };
+    document.head.appendChild(el);
+  }
+  function loadFirebase(cb){
+    var base = 'https://www.gstatic.com/firebasejs/10.12.2/';
+    loadScript(base + 'firebase-app-compat.js', function(e1){
+      if(e1) return cb(e1);
+      loadScript(base + 'firebase-firestore-compat.js', cb);
+    });
+  }
+  function onDataChange(){
+    if(busy) return;
+    if(me && !$('vMe').classList.contains('hidden')) renderMe();
+    if(!$('tOpen').classList.contains('hidden')) renderTable();
+  }
+  function startCloud(){
+    setNet('서버에 연결하는 중…');
+    loadFirebase(function(err){
+      if(err){ setNet('⚠️ 서버에 연결하지 못했어요. 인터넷을 확인하고 새로고침해 주세요.'); return; }
+      try{
+        firebase.initializeApp(CONFIG.firebase);
+        DB = firebase.firestore();
+        DB.collection('draws').onSnapshot(function(snap){
+          var p = {};
+          snap.forEach(function(d){
+            var id = parseInt(d.id, 10), data = d.data() || {};
+            if(id > 0) p[id] = Array.isArray(data.picks) ? data.picks : [];
+          });
+          S.picks = p; cloudReady = true; setNet('');
+          onDataChange();
+        }, function(e){ setNet('⚠️ 서버에서 기록을 읽지 못했어요. (' + ((e && e.code) || '오류') + ')'); });
+      }catch(e){ setNet('⚠️ Firebase 설정에 문제가 있어요.'); }
+    });
+  }
+  function persistStudent(n){
+    if(!cloudMode) return save();
+    return DB.collection('draws').doc(String(n)).set({ picks: S.picks[n] || [] })
+      .catch(function(){ $('undoMsg').textContent = '⚠️ 서버에 저장하지 못했어요.'; });
+  }
+  function persistAll(){
+    if(!cloudMode) return save();
+    var col = DB.collection('draws');
+    return col.get().then(function(snap){
+      var b = DB.batch();
+      snap.forEach(function(d){ if(!S.picks[parseInt(d.id, 10)]) b.delete(d.ref); });
+      Object.keys(S.picks).forEach(function(k){ b.set(col.doc(String(k)), { picks: S.picks[k] || [] }); });
+      return b.commit();
+    }).catch(function(){ $('bkMsg').textContent = '⚠️ 서버에 저장하지 못했어요.'; });
   }
 
   // ---- 선생님 ----
@@ -432,7 +541,7 @@ details.pn table{margin-top:8px}
     $('notYet').textContent = (pending.length ? '오늘 아직 못 뽑은 번호: ' + pending.join(', ') : '오늘 모두 뽑았어요! 🎉') + (sk.length ? '  |  없는 번호: ' + sk.join(', ') : '');
     $('tbl').innerHTML = html;
     renderPerNum();
-    $('todayCount').textContent = '· 오늘 뽑은 친구 ' + done + '/' + activeList().length;
+    $('todayCount').textContent = '· 오늘 뽑은 친구 ' + done + '/' + activeList().length + (cloudMode ? ' · ☁️ 서버 저장' : ' · 💾 이 기기에만 저장');
   }
   function renderPerNum(){
     var box = $('perNum'), openSet = {}, html = '';
@@ -474,7 +583,7 @@ details.pn table{margin-top:8px}
   renderSkipNote();
   function showMission(friend, text, proof, snack){
     $('ovWho').textContent = lbl(friend) + ' 친구와 함께!';
-    $('ovText').textContent = text || '친구와 즉거운 이야기를 나눠 보세요!';
+    $('ovText').textContent = text || '친구와 즐거운 이야기를 나눠 보세요!';
     var pf = $('ovProof');
     if(proof){ pf.textContent = '📸 인증: ' + proof; pf.classList.remove('hidden'); } else pf.classList.add('hidden');
     var sk = $('ovSnack');
@@ -508,7 +617,7 @@ details.pn table{margin-top:8px}
     list.forEach(function(p, i){ if(p.date === t) idx = i; });
     if(idx < 0){ $('undoMsg').textContent = n + '번은 오늘 뽑은 기록이 없어요.'; return; }
     var removed = list.splice(idx, 1)[0];
-    save(); renderTable();
+    persistStudent(n); renderTable();
     $('undoMsg').textContent = n + '번의 오늘 기록(' + removed.to + '번)을 취소했어요.';
   };
   $('btnExport').onclick = function(){
@@ -521,7 +630,7 @@ details.pn table{margin-top:8px}
       var o = JSON.parse($('backup').value);
       if(!o || typeof o.picks !== 'object') throw 0;
       S.picks = o.picks; applyConfig();
-      save(); openTeacher(); $('bkMsg').textContent = '복원했어요 ✅';
+      persistAll(); openTeacher(); $('bkMsg').textContent = '복원했어요 ✅';
     }catch(e){ $('bkMsg').textContent = '백업 내용이 올바르지 않아요.'; }
   };
   $('btnReset').onclick = function(){
@@ -530,9 +639,10 @@ details.pn table{margin-top:8px}
       b.dataset.arm = '1'; b.textContent = '정말 지울까요? 한 번 더 누르면 삭제!';
       setTimeout(resetArm, 4000); return;
     }
-    S.picks = {}; save(); resetArm(); renderTable();
+    S.picks = {}; persistAll(); resetArm(); renderTable();
     $('resetMsg').textContent = '모든 기록을 지웠어요.';
   };
+  if(cloudMode) startCloud();
 })();
 </script>
 </body>
