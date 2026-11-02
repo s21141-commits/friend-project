@@ -75,6 +75,7 @@ details.pn table{margin-top:8px}
   <h1>🎲 랜덤 친구 뽑기</h1>
   <p class="sub">하루에 한 번, 새로운 친구를 만나요!</p>
   <p id="netNote" class="msg" style="color:var(--accent)"></p>
+  <p id="verNote" class="msg" style="font-size:12px;margin:-6px 0 10px"></p>
 
   <!-- 1. 번호 입력 -->
   <div id="vLogin" class="card">
@@ -656,6 +657,7 @@ details.pn table{margin-top:8px}
     S.picks = {}; persistAll(); resetArm(); renderTable();
     $('resetMsg').textContent = '모든 기록을 지웠어요.';
   };
+  $('verNote').textContent = '버전 11/02-b · ' + (cloudMode ? '☁️ 서버 저장' : '💾 이 기기에만 저장');
   if(cloudMode) startCloud();
 })();
 </script>
