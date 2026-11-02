@@ -311,7 +311,11 @@ details.pn table{margin-top:8px}
   function weekFull(x){ return S.weekLimit > 0 && weekCount(x) >= S.weekLimit; }
   function pickedToday(){
     var t = today(), out = [];
-    for(var k in S.picks){ (S.picks[k] || []).forEach(function(p){ if(p.date === t) out.push(p.to); }); }
+    for(var k in S.picks){
+      (S.picks[k] || []).forEach(function(p){
+        if(p.date === t){ out.push(p.to); if(out.indexOf(+k) < 0) out.push(+k); }
+      });
+    }
     return out;
   }
   function pickedBy(x){
@@ -334,6 +338,12 @@ details.pn table{margin-top:8px}
   function drewToday(x){
     return (S.picks[x] || []).filter(function(p){ return p.date === today(); })[0] || null;
   }
+  function pickedMeToday(x){
+    var t = today(), r = null;
+    for(var k in S.picks){ (S.picks[k] || []).forEach(function(p){ if(p.date === t && p.to === x) r = { from: +k, rec: p }; }); }
+    return r;
+  }
+  function doneToday(x){ return pickedToday().indexOf(x) >= 0; }
 
   // ---- 입장 ----
   function enter(){
@@ -345,28 +355,31 @@ details.pn table{margin-top:8px}
   }
   function renderMe(){
     $('hi').textContent = '안녕, ' + lbl(me) + '! 👋';
-    var t = drewToday(me), left = candidates(me).length;
+    var t = drewToday(me), pb = t ? null : pickedMeToday(me), rec = t || (pb && pb.rec), shown = t ? t.to : (pb ? pb.from : null), left = candidates(me).length;
     var btn = $('btnDraw');
-    $('slot').textContent = t ? t.to : '?';
+    $('slot').textContent = shown !== null ? shown : '?';
     $('weekNote').textContent = S.weekLimit > 0 ? '이번 주 참여 ' + weekCount(me) + '/' + S.weekLimit + '회' : '';
-    $('friendName').textContent = t && S.names[t.to] ? S.names[t.to] : '';
+    $('friendName').textContent = shown !== null && S.names[shown] ? S.names[shown] : '';
     var mb = $('mission');
-    if(t && (t.mission || t.snack)){
+    if(rec && (rec.mission || rec.snack)){
       mb.innerHTML = '<b>🎯 오늘의 미션</b>';
-      var sp = document.createElement('span'); sp.textContent = t.mission; mb.appendChild(sp);
-      if(t.proof){ var pe = document.createElement('div'); pe.style.marginTop = '8px'; pe.textContent = '📸 인증: ' + t.proof; mb.appendChild(pe); }
-      if(t.snack){ var se = document.createElement('div'); se.style.marginTop = '8px'; se.textContent = '🍬 보상 간식: ' + t.snack; mb.appendChild(se); }
-      var ul = missionLink(t.mission); if(ul) mb.appendChild(linkBtn(ul, 'gl'));
+      var sp = document.createElement('span'); sp.textContent = rec.mission; mb.appendChild(sp);
+      if(rec.proof){ var pe = document.createElement('div'); pe.style.marginTop = '8px'; pe.textContent = '📸 인증: ' + rec.proof; mb.appendChild(pe); }
+      if(rec.snack){ var se = document.createElement('div'); se.style.marginTop = '8px'; se.textContent = '🍬 보상 간식: ' + rec.snack; mb.appendChild(se); }
+      var ul = missionLink(rec.mission); if(ul) mb.appendChild(linkBtn(ul, 'gl'));
       mb.classList.remove('hidden');
     }else mb.classList.add('hidden');
     if(t){
       $('status').textContent = '오늘은 ' + lbl(t.to) + ' 친구를 뽑았어요! 내일 또 만나요 😊';
       btn.disabled = true; btn.textContent = '오늘은 끝!';
+    }else if(pb){
+      $('status').textContent = '오늘은 ' + lbl(pb.from) + ' 친구가 나를 뽑았어요! 함께 미션을 해 보세요 😊 (오늘은 참여 끝!)';
+      btn.disabled = true; btn.textContent = '오늘은 끝!';
     }else if(weekFull(me)){
       $('status').textContent = '이번 주 참여는 모두 끝났어요! 다음 주 월요일에 만나요 😊';
       btn.disabled = true; btn.textContent = '이번 주는 끝!';
     }else if(left === 0){
-      $('status').textContent = '지금은 뽑을 수 있는 친구가 없어요. (오늘 이미 뽑힌 친구는 뽑을 수 없어요) 내일 다시 도전하거나 선생님께 알려주세요!';
+      $('status').textContent = '지금은 뽑을 수 있는 친구가 없어요. (오늘 이미 참여한 친구는 뽑을 수 없어요) 내일 다시 도전하거나 선생님께 알려주세요!';
       btn.disabled = true; btn.textContent = '뽑을 친구 없음';
     }else{
       $('status').textContent = '버튼을 눌러 오늘의 친구를 뽑아요!';
@@ -386,6 +399,7 @@ details.pn table{margin-top:8px}
   // 현재 기록(S.picks) 기준으로 규칙을 검사하고 뽑을 친구와 기록 한 줄을 만든다
   function makePick(x){
     if(drewToday(x)) return { err: '오늘은 이미 뽑았어요!' };
+    if(doneToday(x)) return { err: '오늘은 친구가 나를 뽑아서 참여가 끝났어요!' };
     if(weekFull(x)) return { err: '이번 주 참여는 모두 끝났어요!' };
     var c = candidates(x);
     if(!c.length) return { err: '지금은 뽑을 수 있는 친구가 없어요.' };
@@ -422,7 +436,7 @@ details.pn table{margin-top:8px}
     });
   }
   function draw(){
-    if(busy || drewToday(me) || weekFull(me)) return;
+    if(busy || drewToday(me) || doneToday(me) || weekFull(me)) return;
     if(cloudMode && !cloudReady) return;
     busy = true;
     $('btnDraw').disabled = true;
@@ -513,12 +527,12 @@ details.pn table{margin-top:8px}
     $('tLock').classList.add('hidden'); $('tOpen').classList.remove('hidden');
   }
   function renderTable(){
-    var t = today(), done = 0, esc = function(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }, html = '<tr><th>번호</th><th>오늘 뽑은 · 뽑힌 기록 · 미션</th></tr>', pending = [];
+    var t = today(), done = 0, esc = function(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }, html = '<tr><th>번호</th><th>오늘 뽑은 · 뽑힌 기록 · 미션</th></tr>', pending = [], taken = pickedToday();
     for(var i = 1; i <= S.total; i++){
       if(!isActive(i)){ html += '<tr><td>' + i + '</td><td style="color:var(--sub)">🚫 없는 번호</td></tr>'; continue; }
       var list = S.picks[i] || [];
       var tl = list.filter(function(p){ return p.date === t; });
-      if(tl.length) done++; else if(!weekFull(i)) pending.push(i);
+      if(tl.length) done++; else if(!weekFull(i) && taken.indexOf(i) < 0) pending.push(i);
       var cell = tl.map(function(p){
         return '<div style="margin-bottom:6px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline"><span>👉 <b>' + escH(lbl(p.to)) + '</b>을 뽑음 <span style="color:var(--sub)">(' + mmdd(p.date) + ')</span></span>' + (p.mission ? '<span>🎯 ' + esc(p.mission) + (p.proof ? ' <small>(📸 ' + esc(p.proof) + ')</small>' : '') + '</span>' : '') + (p.snack ? '<span>🍬 ' + esc(p.snack) + '</span>' : '') + '</div>';
       }).join('');
@@ -538,7 +552,7 @@ details.pn table{margin-top:8px}
     });
     
     var sk = S.skip.filter(function(v){ return v <= S.total; });
-    $('notYet').textContent = (pending.length ? '오늘 아직 못 뽑은 번호: ' + pending.join(', ') : '오늘 모두 뽑았어요! 🎉') + (sk.length ? '  |  없는 번호: ' + sk.join(', ') : '');
+    $('notYet').textContent = (pending.length ? '오늘 아직 참여 안 한 번호: ' + pending.join(', ') : '오늘 모두 참여했어요! 🎉') + (sk.length ? '  |  없는 번호: ' + sk.join(', ') : '');
     $('tbl').innerHTML = html;
     renderPerNum();
     $('todayCount').textContent = '· 오늘 뽑은 친구 ' + done + '/' + activeList().length + (cloudMode ? ' · ☁️ 서버 저장' : ' · 💾 이 기기에만 저장');
